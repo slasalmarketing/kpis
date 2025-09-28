@@ -1,15 +1,193 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تقرير الإنتاجية</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>KPI Tasks Logger</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  body{font-family:"Cairo",Tahoma,Arial; background:#f4f6fa; color:#111; padding:20px}
+  .card{max-width:1000px;margin:20px auto;background:#fff;border-radius:16px;
+        box-shadow:0 4px 20px rgba(0,0,0,.08);padding:24px}
+  h2{margin-top:0;text-align:center;color:#2c3e50}
+  table{width:100%;border-collapse:collapse;margin-top:15px}
+  th,td{border:1px solid #e0e6ed;padding:10px;text-align:center}
+  th{background:#f9fafc;color:#34495e;font-weight:600}
+  tr:nth-child(even){background:#fafbfd}
+  input,select{padding:6px 10px;border:1px solid #ccc;border-radius:8px}
+  .btn{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+  .btn-add{background:#3498db;color:#fff}
+  .btn-add:hover{background:#2980b9}
+  .btn-pdf{background:#27ae60;color:#fff;margin-top:10px}
+  .btn-pdf:hover{background:#1e8449}
+  .delete-btn{background:none;border:none;cursor:pointer;font-size:18px;color:#e74c3c;transition:.2s}
+  .delete-btn:hover{transform:scale(1.2);color:#c0392b}
+  .summary{margin-top:20px;padding:15px;background:#ecf0f1;border-radius:12px;line-height:1.8}
+  .highlight{color:#27ae60;font-weight:bold}
+</style>
 </head>
 <body>
-  <h1>تقرير الإنتاجية</h1>
-  <p>معدل الفرد: 0.72 تاسك/ساعة</p>
-  <p>تاسك كل ≈ 1.4 ساعة</p>
-  <script src="script.js"></script>
+  <div class="card">
+    <h2>⚙️ نظام KPI + البونص</h2>
+    
+    <label>💰 الراتب الثابت (شهري): </label>
+    <input type="number" id="salary" placeholder="ادخل الراتب" />
+    <label>🎁 أيام البونص: </label>
+    <input type="number" id="bonusDays" value="0" />
+    <button class="btn btn-add" onclick="calculateAll()">تحديث الحسبة</button>
+
+    <table id="taskTable">
+      <thead>
+        <tr>
+          <th>📅 التاريخ</th>
+          <th>👤 الموظف</th>
+          <th>⚙️ نوع التاسك</th>
+          <th>📑 العدد</th>
+          <th>🧮 العمليات</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button class="btn btn-add" onclick="addTask()"><i class="fa fa-plus"></i> إضافة تاسك</button>
+
+    <div class="summary" id="summaryBox">
+      💵 الراتب الأساسي: <span id="baseSalary">0</span> ريال <br>
+      📑 قيمة التاسكات: <span id="tasksValue">0</span> ريال <br>
+      🎁 قيمة البونص: <span id="bonusValue">0</span> ريال <br>
+      🧾 الراتب الكلي: <span class="highlight" id="totalSalary">0</span> ريال
+    </div>
+
+    <button class="btn btn-pdf" onclick="downloadPDF()"><i class="fa fa-file-pdf"></i> تحميل التقرير PDF</button>
+  </div>
+
+<script>
+let employeesList = [];
+const API_URL = "https://script.google.com/macros/s/AKfycbw9i4FiqgqzRYq_iXpPFqWopF_m7yK7IPFGDfQjPnts4vmwKt8kRYwSg4OkRhpdYyY2/exec"; // 🔗 حط هنا رابط الويب اب بتاعك
+
+// 🟢 جلب أسماء الموظفين من Google Sheet API
+async function fetchEmployees() {
+  try {
+    let res = await fetch(API_URL);
+    employeesList = await res.json();
+  } catch (err) {
+    console.error("خطأ في جلب أسماء الموظفين:", err);
+    employeesList = ["موظف 1","موظف 2"]; // fallback لو حصل خطأ
+  }
+}
+
+// 🟢 إضافة صف جديد
+async function addTask(){
+  if (employeesList.length === 0) {
+    await fetchEmployees(); // نتأكد ان الأسماء اتسحبت
+  }
+  let table=document.querySelector("#taskTable tbody");
+  let row=document.createElement("tr");
+  row.innerHTML=`
+    <td><input type="date"></td>
+    <td>
+      <select>
+        ${employeesList.map(name => `<option value="${name}">${name}</option>`).join("")}
+      </select>
+    </td>
+    <td>
+      <select>
+        <option value="salla">سلة</option>
+        <option value="zid">زد</option>
+        <option value="shopify">شوبيفاي</option>
+        <option value="wordpress">ووردبريس</option>
+        <option value="opencart">أوب كارت</option>
+        <option value="coding">كودينج</option>
+        <option value="ui_shopify">UI شوبيفاي</option>
+        <option value="other">منصة اخرى</option>
+      </select>
+    </td>
+    <td><input type="number" min="1" value="1"></td>
+    <td><button class="delete-btn" onclick="this.closest('tr').remove(); calculateAll()">
+      <i class="fa-solid fa-trash"></i>
+    </button></td>`;
+  table.appendChild(row);
+}
+
+function getTaskValue(type){
+  let base = 0.25; // سلة = 0.25 يوم
+  if(type==="wordpress" || type==="opencart" || type==="ui_shopify"){
+    return base*2; // ضعف
+  } else if(type==="coding"){
+    return base*3; // مثال: كودينج أصعب
+  }
+  return base;
+}
+
+function calculateAll(){
+  let salary=parseFloat(document.getElementById("salary").value)||0;
+  let bonusDays=parseInt(document.getElementById("bonusDays").value)||0;
+  let daily=salary/30;
+
+  // حساب قيمة التاسكات
+  let rows = document.querySelectorAll("#taskTable tbody tr");
+  let totalTaskDays=0;
+  rows.forEach(row=>{
+    let type=row.querySelector("select:nth-child(1)").value;
+    let count=parseInt(row.querySelector("td:nth-child(4) input").value)||0;
+    totalTaskDays += getTaskValue(type)*count;
+  });
+  let tasksValue = totalTaskDays * daily;
+
+  // البونص
+  let bonusValue = daily*bonusDays;
+
+  // الراتب الكلي
+  let total = salary + tasksValue + bonusValue;
+
+  document.getElementById("baseSalary").textContent=salary.toFixed(2);
+  document.getElementById("tasksValue").textContent=tasksValue.toFixed(2);
+  document.getElementById("bonusValue").textContent=bonusValue.toFixed(2);
+  document.getElementById("totalSalary").textContent=total.toFixed(2);
+}
+
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  let doc = new jsPDF("p","pt","a4");
+
+  doc.setFont("Helvetica","bold");
+  doc.setFontSize(16);
+  doc.text("تقرير KPI + البونص", 220, 40);
+
+  doc.setFontSize(12);
+  doc.setFont("Helvetica","normal");
+
+  let salary=document.getElementById("baseSalary").textContent;
+  let tasks=document.getElementById("tasksValue").textContent;
+  let bonus=document.getElementById("bonusValue").textContent;
+  let total=document.getElementById("totalSalary").textContent;
+
+  doc.text(`💵 الراتب الأساسي: ${salary} ريال`, 60, 80);
+  doc.text(`📑 قيمة التاسكات: ${tasks} ريال`, 60, 100);
+  doc.text(`🎁 قيمة البونص: ${bonus} ريال`, 60, 120);
+  doc.text(`🧾 الراتب الكلي: ${total} ريال`, 60, 140);
+
+  // استخراج التاسكات
+  let rows = document.querySelectorAll("#taskTable tbody tr");
+  let startY = 180;
+  doc.setFont("Helvetica","bold");
+  doc.text("📑 تفاصيل التاسكات:", 60, startY);
+  doc.setFont("Helvetica","normal");
+  startY += 20;
+
+  rows.forEach((row,i)=>{
+    let cols = row.querySelectorAll("td");
+    let date = cols[0].querySelector("input").value;
+    let name = cols[1].querySelector("select").value;
+    let type = cols[2].querySelector("select").value;
+    let count = cols[3].querySelector("input").value;
+    doc.text(`${i+1}- ${date} | ${name} | ${type} | العدد: ${count}`, 60, startY);
+    startY += 20;
+  });
+
+  doc.save("KPI_Report.pdf");
+}
+</script>
 </body>
 </html>
