@@ -64,7 +64,7 @@
 
 <script>
 let employeesList = [];
-const API_URL = "https://script.google.com/macros/s/AKfycbw9i4FiqgqzRYq_iXpPFqWopF_m7yK7IPFGDfQjPnts4vmwKt8kRYwSg4OkRhpdYyY2/exec"; // 🔗 حط هنا رابط الويب اب بتاعك
+const API_URL = "https://script.google.com/macros/s/AKfycbw9i4FiqgqzRYq_iXpPFqWopF_m7yK7IPFGDfQjPnts4vmwKt8kRYwSg4OkRhpdYyY2/exec"; // 🔗 رابط الويب اب
 
 // 🟢 جلب أسماء الموظفين من Google Sheet API
 async function fetchEmployees() {
@@ -73,7 +73,7 @@ async function fetchEmployees() {
     employeesList = await res.json();
   } catch (err) {
     console.error("خطأ في جلب أسماء الموظفين:", err);
-    employeesList = ["موظف 1","موظف 2"]; // fallback لو حصل خطأ
+    employeesList = ["موظف 1","موظف 2"]; // fallback
   }
 }
 
@@ -110,35 +110,32 @@ async function addTask(){
   table.appendChild(row);
 }
 
+// 🟢 حساب قيمة التاسك حسب النوع
 function getTaskValue(type){
   let base = 0.25; // سلة = 0.25 يوم
   if(type==="wordpress" || type==="opencart" || type==="ui_shopify"){
-    return base*2; // ضعف
+    return base*2;
   } else if(type==="coding"){
-    return base*3; // مثال: كودينج أصعب
+    return base*3;
   }
   return base;
 }
 
+// 🟢 حساب الراتب الكلي
 function calculateAll(){
   let salary=parseFloat(document.getElementById("salary").value)||0;
   let bonusDays=parseInt(document.getElementById("bonusDays").value)||0;
   let daily=salary/30;
 
-  // حساب قيمة التاسكات
   let rows = document.querySelectorAll("#taskTable tbody tr");
   let totalTaskDays=0;
   rows.forEach(row=>{
-    let type=row.querySelector("select:nth-child(1)").value;
+    let type=row.querySelector("td:nth-child(3) select").value;
     let count=parseInt(row.querySelector("td:nth-child(4) input").value)||0;
     totalTaskDays += getTaskValue(type)*count;
   });
   let tasksValue = totalTaskDays * daily;
-
-  // البونص
   let bonusValue = daily*bonusDays;
-
-  // الراتب الكلي
   let total = salary + tasksValue + bonusValue;
 
   document.getElementById("baseSalary").textContent=salary.toFixed(2);
@@ -147,6 +144,7 @@ function calculateAll(){
   document.getElementById("totalSalary").textContent=total.toFixed(2);
 }
 
+// 🟢 تحميل PDF
 function downloadPDF(){
   const { jsPDF } = window.jspdf;
   let doc = new jsPDF("p","pt","a4");
@@ -168,7 +166,6 @@ function downloadPDF(){
   doc.text(`🎁 قيمة البونص: ${bonus} ريال`, 60, 120);
   doc.text(`🧾 الراتب الكلي: ${total} ريال`, 60, 140);
 
-  // استخراج التاسكات
   let rows = document.querySelectorAll("#taskTable tbody tr");
   let startY = 180;
   doc.setFont("Helvetica","bold");
@@ -188,6 +185,9 @@ function downloadPDF(){
 
   doc.save("KPI_Report.pdf");
 }
+
+// 🟢 تحميل أسماء الموظفين عند فتح الصفحة
+window.onload = fetchEmployees;
 </script>
 </body>
 </html>
